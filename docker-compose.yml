@@ -1,37 +1,33 @@
 version: '3.9'
 
-# Definición de los servicios necesarios para el proyecto
 services:
-  # Base de datos MySQL
   mysql:
     image: mysql:8.0
     container_name: mysql_restaurante
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: restaurante_db
-      MYSQL_USER: user
-      MYSQL_PASSWORD: userpass
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3306:3306"
+      - "${MYSQL_PORT}:3306"
     volumes:
       - ./mysql_data:/var/lib/mysql
 
-  # Interface web para MySQL
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: phpmyadmin_restaurante
     restart: always
     environment:
       PMA_HOST: mysql
-      PMA_USER: root
-      PMA_PASSWORD: root
+      PMA_USER: ${PMA_USER}          # puedes poner ${MYSQL_USER} o "root"
+      PMA_PASSWORD: ${PMA_PASSWORD}  # si PMA_USER=root, usa ${MYSQL_ROOT_PASSWORD}
     ports:
-      - "8081:80"
+      - "${PHPMYADMIN_PORT}:80"
     depends_on:
       - mysql
 
-  # Backend PHP/Laravel
   backend:
     build:
       context: ./backend
@@ -39,31 +35,28 @@ services:
     container_name: backend_restaurante
     restart: always
     ports:
-      - "8000:80"
+      - "${BACKEND_PORT}:80"
     volumes:
       - ./backend:/var/www/html
     depends_on:
       - mysql
     environment:
       DB_HOST: mysql
-      DB_DATABASE: restaurante_db
-      DB_USERNAME: user
-      DB_PASSWORD: userpass
+      DB_DATABASE: ${MYSQL_DATABASE}
+      DB_USERNAME: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
 
-  # Frontend Angular
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
     container_name: frontend_restaurante
     restart: always
     ports:
-      - "4200:4200"
+      - "${FRONTEND_PORT}:4200"
     volumes:
       - ./frontend:/usr/src/app
     command: npm start
 
-  # Servicio n8n para automatizaciones
   n8n:
     image: n8nio/n8n
     container_name: n8n_restaurante
@@ -71,16 +64,15 @@ services:
     environment:
       GENERIC_TIMEZONE: Europe/Madrid
       N8N_BASIC_AUTH_ACTIVE: "true"
-      N8N_BASIC_AUTH_USER: admin
-      N8N_BASIC_AUTH_PASSWORD: admin123
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD}
       DB_TYPE: sqlite
       DB_SQLITE_DATABASE: /home/node/.n8n/database.sqlite
     ports:
-      - "5678:5678"
+      - "${N8N_PORT}:5678"
     volumes:
       - ./n8n_data:/home/node/.n8n
 
-# Red por defecto para todos los servicios
 networks:
   default:
     driver: bridge
