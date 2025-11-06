@@ -1,0 +1,151 @@
+{
+  "name": "Reservas restaurante",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reservas",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        300,
+        300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validar y normalizar los datos de la reserva\nconst { nombre, email, personas, telefono, fecha, hora, comentarios } = items[0].json;\n\nif (!nombre || !email || !personas || !fecha || !hora) {\n  throw new Error('Faltan campos obligatorios: nombre, email, personas, fecha u hora');\n}\n\n// Convertir fecha y hora en formato ISO para Google Calendar\nconst startDate = new Date(`${fecha}T${hora}:00`);\nconst endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // Duración de 90 minutos\n\nitems[0].json = {\n  ...items[0].json,\n  startISO: startDate.toISOString(),\n  endISO: endDate.toISOString(),\n};\n\nreturn items;\n"
+      },
+      "name": "Validar/Normalizar",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        500,
+        300
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "calendar": "",
+        "startTime": "={{ $json[\"startISO\"] }}",
+        "endTime": "={{ $json[\"endISO\"] }}",
+        "title": "={{ \"Reserva para \" + $json.nombre }}",
+        "description": "={{ \"Reserva para \" + $json.personas + \" persona(s).\\nTeléfono: \" + ($json.telefono ?? '') + \"\\nComentarios: \" + ($json.comentarios ?? '') }}",
+        "options": {}
+      },
+      "name": "Crear evento en Calendar",
+      "type": "n8n-nodes-base.googleCalendar",
+      "position": [
+        700,
+        300
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "googleApi": {
+          "id": "{{PLACEHOLDER}}",
+          "name": "Cuenta Google"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "fromEmail": "={{ $env[\"N8N_EMAIL\"] || \"reservas@tu-dominio.com\" }}",
+        "toEmail": "={{ $json.email }}",
+        "subject": "Confirmación de reserva",
+        "message": "={{ `Hola ${$json.nombre},\\n\\nTu reserva se ha registrado con éxito para el día ${$json.fecha} a las ${$json.hora}.\\n\\nGracias por elegirnos.\\n` }}"
+      },
+      "name": "Enviar correo",
+      "type": "n8n-nodes-base.gmail",
+      "position": [
+        900,
+        300
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "{{PLACEHOLDER}}",
+          "name": "Cuenta Gmail"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "insert",
+        "table": "reservas",
+        "columns": "codigo,nombre,email,telefono,personas,fecha,hora,start_iso,end_iso,comentarios",
+        "values": "={{ $json.codigo || (Math.random().toString(36).substr(2,8)) }},{{ $json.nombre }},{{ $json.email }},{{ $json.telefono || '' }},{{ $json.personas }},{{ $json.fecha }},{{ $json.hora }},{{ $json.startISO }},{{ $json.endISO }},{{ $json.comentarios || '' }}"
+      },
+      "name": "Guardar en MySQL",
+      "type": "n8n-nodes-base.mySql",
+      "position": [
+        1100,
+        300
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "mySql": {
+          "id": "{{PLACEHOLDER}}",
+          "name": "MySQL Restaurante"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "statusCode": 200,
+        "body": "={{ { mensaje: 'Reserva creada con éxito' } }}"
+      },
+      "name": "Respuesta",
+      "type": "n8n-nodes-base.httpResponse",
+      "position": [
+        1300,
+        300
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar/Normalizar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar/Normalizar": {
+      "main": [
+        [
+          {
+            "node": "Crear evento en Calendar",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar correo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Guardar en MySQL",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

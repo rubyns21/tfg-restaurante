@@ -1,0 +1,86 @@
+version: '3.9'
+
+# Definición de los servicios necesarios para el proyecto
+services:
+  # Base de datos MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_restaurante
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: restaurante_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: userpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+
+  # Interface web para MySQL
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin_restaurante
+    restart: always
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8081:80"
+    depends_on:
+      - mysql
+
+  # Backend PHP/Laravel
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_restaurante
+    restart: always
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/html
+    depends_on:
+      - mysql
+    environment:
+      DB_HOST: mysql
+      DB_DATABASE: restaurante_db
+      DB_USERNAME: user
+      DB_PASSWORD: userpass
+
+  # Frontend Angular
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend_restaurante
+    restart: always
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./frontend:/usr/src/app
+    command: npm start
+
+  # Servicio n8n para automatizaciones
+  n8n:
+    image: n8nio/n8n
+    container_name: n8n_restaurante
+    restart: always
+    environment:
+      GENERIC_TIMEZONE: Europe/Madrid
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: admin
+      N8N_BASIC_AUTH_PASSWORD: admin123
+      DB_TYPE: sqlite
+      DB_SQLITE_DATABASE: /home/node/.n8n/database.sqlite
+    ports:
+      - "5678:5678"
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+
+# Red por defecto para todos los servicios
+networks:
+  default:
+    driver: bridge

@@ -1,0 +1,13 @@
+# Archivos de entorno (no subir nunca)
+.env
+.env.local
+.env.*.local
+
+# Datos persistentes (volúmenes)
+mysql_data/
+n8n_data/
+
+# Dependencias y ficheros de sistema
+node_modules/
+vendor/
+.DS_Store
