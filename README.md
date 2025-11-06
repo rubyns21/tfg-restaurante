@@ -23,8 +23,8 @@
 
 - **Angular (Frontend)**: http://localhost:4200  
 - **Laravel/PHP (Backend)**: http://localhost:8000  
-- **phpMyAdmin**: http://localhost:8081 (usuario: `user`, contraseña: `userpass`)  
-- **n8n**: http://localhost:5678 (usuario: `admin`, contraseña: `admin123`)  
+- **phpMyAdmin**: http://localhost:8081 
+- **n8n**: http://localhost:5678 
 
 ## Estructura del proyecto
 
